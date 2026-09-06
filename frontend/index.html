@@ -13,9 +13,17 @@
       <button type="submit">Add Task</button>
     </form>
 
+    <input id="searchInput" placeholder="Search tasks">
+    <button id="searchButton">Search</button>
+    <button id="allButton">All</button>
+    <button id="completedButton">Completed</button>
+    <button id="incompleteButton">Incomplete</button>
     <div id="taskList"></div>
     <div id="errorMessage"></div>
+    <div id="loadingMessage">Loading...</div>
 
+    <script src="api.js"></script>  
     <script src="app.js"></script>
+    
   </body>
 </html>

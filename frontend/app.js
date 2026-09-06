@@ -1,4 +1,3 @@
-
 function renderTasks(tasks) {
     const list = document.querySelector("#taskList");
 
@@ -7,43 +6,203 @@ function renderTasks(tasks) {
     tasks.forEach(task => {
         const item = document.createElement("div");
 
-        item.textContent =
-            `${task.id}: ${task.title}`;
+        item.innerHTML = `
+            <input
+                type="checkbox"
+                ${task.completed ? "checked" : ""}
+                onchange="toggleComplete(${task.id}, this.checked, '${task.title}')"
+            >
+
+            <span>No. ${task.id}: ${task.title}</span>
+
+            <button onclick="editTask(${task.id}, '${task.title}')">
+                Edit
+            </button>
+
+            <button onclick="deleteTask(${task.id})">
+                Delete
+            </button>
+        `;
 
         list.appendChild(item);
     });
 }
 
-async function loadTasks() {
-    const response = await fetch("http://localhost:3000/api/tasks");
-
-    const tasks = await response.json();
-
-    console.log(tasks);
-
-    renderTasks(tasks);
+function showError(message) {
+    document.querySelector("#errorMessage").textContent = message;
 }
 
-document
-    .querySelector("#taskForm")
-    .addEventListener("submit", async (event) => {
+// challenge 4
+function handleApiError(error) {
+    if (error.message === "400") {
+        showError("Bad request. Please check your input.");
+    } else if (error.message === "404") {
+        showError("Task not found.");
+    } else if (error.message === "500") {
+        showError("Server error. Please try again later.");
+    } else {
+        showError("Unable to connect to the server.");
+    }
+}
 
-        event.preventDefault();
+async function loadTasks() {
+    const loadingMessage = document.querySelector("#loadingMessage");
 
-        const title =
-            document.querySelector("#taskTitle").value;
+    loadingMessage.style.display = "block";
 
-        // Send task to API
-        const response = await fetch('http://localhost:3000/api/tasks', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: title, completed: false })
-        });
-        const tasks = await response.json();
+    try {
+        const tasks = await getTasks();
+
         console.log(tasks);
-
         renderTasks(tasks);
-    });
 
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+
+    } finally {
+        loadingMessage.style.display = "none";
+    }
+}
 
 loadTasks();
+
+async function deleteTask(id) {
+    try {
+        await deleteTaskApi(id);
+
+        loadTasks();
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+}
+
+async function editTask(id, oldTitle) { // Prompt the user for a new title
+    const newTitle = prompt("Edit task:", oldTitle);
+
+    if (!newTitle) {
+        return;
+    }
+
+    try {
+        await updateTask(id, newTitle, false);
+
+        loadTasks();
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+}
+
+async function toggleComplete(id, completed, title) {
+    try {
+        await updateTask(id, title, completed);
+
+        loadTasks();
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+}
+
+const taskForm = document.querySelector("#taskForm");
+
+taskForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const title =
+        document.querySelector("#taskTitle").value;
+
+    console.log("Ready to send: " + title);
+
+    try {
+        const tasks = await createTask(title);
+
+        document.querySelector("#taskTitle").value = "";
+
+        console.log(tasks);
+        renderTasks(tasks);
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+});
+
+// challenge 1
+
+const searchButton = document.querySelector("#searchButton");
+
+searchButton.addEventListener("click", async () => {
+    const keyword = document
+        .querySelector("#searchInput")
+        .value
+        .toLowerCase();
+
+    try {
+        const tasks = await getTasks();
+
+        if (keyword === "") {
+            renderTasks(tasks);
+            return;
+        }
+
+        const filteredTasks = tasks.filter(task =>
+            task.title.toLowerCase().includes(keyword)
+        );
+
+        renderTasks(filteredTasks);
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+});
+
+// challenge 2
+
+document.querySelector("#allButton").addEventListener("click", async () => {
+    try {
+        const tasks = await getTasks();
+
+        renderTasks(tasks);
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+});
+
+document.querySelector("#completedButton").addEventListener("click", async () => {
+    try {
+        const tasks = await getTasks();
+
+        const completedTasks =
+            tasks.filter(task => task.completed === true);
+
+        renderTasks(completedTasks);
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+});
+
+document.querySelector("#incompleteButton").addEventListener("click", async () => {
+    try {
+        const tasks = await getTasks();
+
+        const incompleteTasks =
+            tasks.filter(task => task.completed === false);
+
+        renderTasks(incompleteTasks);
+
+    } catch (error) {
+        console.error(error);
+        handleApiError(error);
+    }
+});
